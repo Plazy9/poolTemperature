@@ -17,7 +17,7 @@
 #include <FS.h> 
 
 // Data wire is connected to GPIO 4
-#define ONE_WIRE_BUS 4
+#define ONE_WIRE_BUS 2
 
 // Setup a oneWire instance to communicate with any OneWire devices
 OneWire oneWire(ONE_WIRE_BUS);
@@ -51,7 +51,8 @@ AsyncWebServer server(80);
 
 //led
 //const int ledPin =  LED_BUILTIN;// the number of the LED pin
-const int ledPin =  14;// the number of the LED pin
+const int LEDPIN =  12;// the number of the LED pin
+
 
 // Variables will change:
 int ledState = LOW;  
@@ -68,7 +69,7 @@ String readDSTemperatureC() {
   }
 
   // set the LED with the ledState of the variable:
-  digitalWrite(ledPin, ledState);
+  digitalWrite(LEDPIN, ledState);
   
   sensors.requestTemperatures(); // Send the command to get temperatures
 
@@ -87,7 +88,7 @@ String readDSTemperatureC() {
       TempDataContent = TempDataContent + String(tempC) + ";"; 
       snprintf (msg, MSG_BUFFER_SIZE, "%.2f", tempC);
       
-      tempTopic = "pl_nodemcu_temp/pl_outTopic/"+String(i);
+      tempTopic = "pl_nodemcu_temp/pl_outTopic/"+String(i)+"/";
       client.publish(tempTopic.c_str(), msg);
     }
   }
@@ -152,8 +153,8 @@ void reconnect() {
 
 void setup(){
   //led 
-  pinMode(ledPin, OUTPUT);
-  digitalWrite(ledPin, LOW);
+  pinMode(LEDPIN, OUTPUT);
+  digitalWrite(LEDPIN, LOW);
   
   // Serial port for debugging purposes
   Serial.begin(115200);
@@ -163,7 +164,7 @@ void setup(){
   setup_wifi();
   client.setServer(mqtt_server, 1883);
 
-  digitalWrite(ledPin, HIGH);
+  digitalWrite(LEDPIN, HIGH);
   
   // Start up the DS18B20 library
   sensors.begin();
@@ -216,6 +217,7 @@ void setup(){
   */
   // Start server
   server.begin();
+  digitalWrite(LEDPIN, LOW);
 }
  
 void loop(){
