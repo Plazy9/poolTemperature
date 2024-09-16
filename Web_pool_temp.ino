@@ -29,6 +29,9 @@ DallasTemperature sensors(&oneWire);
 String temperatureF = "";
 String temperatureC = "";
 
+unsigned long lastMsg = 0;
+unsigned long lastMsg2 = 0;
+
 int numberOfDevices;
 DeviceAddress tempDeviceAddress;
 
@@ -39,6 +42,11 @@ const char* password = wifiPassword;
 const char* mqtt_server = mqttServer;
 const char* mqttServerUser = mqttUser;
 const char* mqttServerPWD = mqttPassword;
+
+const String mqttMainTopic = mqttMainTopic_CFG;
+const String mqttDeviceName = mqttDeviceName_CFG; 
+
+String full_mqtt_topic = (mqttMainTopic+"/"+mqttDeviceName).c_str();
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -84,12 +92,17 @@ String readDSTemperatureC() {
       // Print the data
       float tempC = sensors.getTempC(tempDeviceAddress);
       
-      //TempDataContent = TempDataContent + " Temperature for device: " + i + " Temp C: " + tempC;
+      TempDataContent = TempDataContent + " Temperature for device: " + i + " Temp C: " + tempC;
       TempDataContent = TempDataContent + String(tempC) + ";"; 
-      snprintf (msg, MSG_BUFFER_SIZE, "%.2f", tempC);
       
-      tempTopic = "pl_nodemcu_temp/pl_outTopic/"+String(i)+"/";
-      client.publish(tempTopic.c_str(), msg);
+      //unsigned long now = millis();
+      //if (now - lastMsg2 > 15000) {
+        //lastMsg2 = now;
+        snprintf (msg, MSG_BUFFER_SIZE, "%.2f", tempC);
+        //tempTopic = "pl_nodemcu_temp/pl_outTopic/"+String(i)+"/";
+        client.publish((full_mqtt_topic+"/temperature"+String(i)+"").c_str() , msg);
+        //client.publish(tempTopic.c_str(), msg);
+      //}
     }
   }
   //Serial.println(TempDataContent);
@@ -137,10 +150,16 @@ void reconnect() {
     String clientId = "ESP8266Client-";
     clientId += String(random(0xffff), HEX);
     // Attempt to connect
-    if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD)) {
+    if (client.connect(clientId.c_str(),mqttServerUser, mqttServerPWD,(full_mqtt_topic+"/status").c_str(), 0, true, "offline")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("pl_nodemcu_temp/pl_outTopic", "hello world");
+      snprintf (msg, MSG_BUFFER_SIZE, "online");
+      client.publish((full_mqtt_topic+"/status").c_str(), msg);
+
+      snprintf (msg, MSG_BUFFER_SIZE, mqttDeviceName.c_str());
+      client.publish((full_mqtt_topic+"/deviceName").c_str() , msg);
+
+
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -225,6 +244,14 @@ void loop(){
     reconnect();
   }
   client.loop();
-  temperatureC = readDSTemperatureC(); 
-  delay(1000);
+  
+  unsigned long now = millis();
+
+  if (now - lastMsg > 2000) {
+    lastMsg = now;
+    temperatureC = readDSTemperatureC();
+  }
+   
+  
+  //delay(1000);
 }
